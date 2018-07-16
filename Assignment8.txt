@@ -1,0 +1,54 @@
+Web: Pick one of the interview questions, and write up how you would want to answer it in an actual interview in a Google Doc. Submit your solution in the normal assignment submission form above.
+
+Interview Question #2: Design a chat service like Facebook Messenger
+
+We want to design a service like Facebook messenger. It should support chat between friends. We can assume that we need to handle about 10B messages sends per day and around 300M users.
+
+Answer:
+A chat service allows users to send messages to their contacts.  It has functionality like:
+* Sending messages to contacts with sent and seen statuses
+* Sending photos to contacts with sent and seen statuses
+* Keeping track of whether a contact is online or not and their last active time
+* Maintaining a history of chats
+* Group messaging functionality
+* Group call functionality 
+* Message notifications 
+
+Being able to handle 10B message sends per day and around 300M users means that there’s a lot of activity and load.  We need load balancers to help distribute traffic across multiple servers, and can store some data in Redis to make things more performant.  Some main features include:
+
+Online status
+-------------
+* Use web sockets to manage connections between clients and server
+* A user is considered as “online” when there’s a connection open to a server and there’s activity within a predefined interval of time.  We need to continuously ping the connection to make sure it’s still active.
+* Store the User Status data in Redis. For example, if user1 has an active connection with server1, this might be represented as: user1, server1, 07/15/2018 12:35:00
+* The user is marked as offline if there’s no activity or the user doesn’t have an active connection to a server.
+
+Sending messages 1-1
+--------------------
+* When a user sends a message, store the message details in Redis.  For example, if user1 sends user2 a text-only message, there will be an Unread Messages entry in Redis: user1, user2, 07/15/2018 12:28:00, “Hey”, 1 (denotes text type)
+* If the recipient is online and has an open connection to a server, deliver the message, and mark it as read by deleting the record from Redis (the Unread Messages entry), and adding it to the database’s Messages table to denote it’s been read.
+* If the user sends a photo, this gets uploaded to a CDN, and the URL is stored with a message type denoting that it’s a photo.
+
+History
+-------
+* All read messages between users are stored and accessed from the Messages table. 
+* To make things more performant, we can store more recent conversations in Redis, instead of pulling from the database.
+
+Proposed data layout for the above features:
+
+Defined Types
+-------------
+Message Type: Text =1, Photo = 2
+
+Redis
+------
+User Status: User ID, Server ID, Last Active Timestamp
+
+Unread Messages: Sender User ID, Recipient User ID, Sent Timestamp, Message (text or URL), Message Type ID (photo or text)
+
+Database
+--------
+Messages: Sender User ID, Recipient User ID, Sent Timestamp, Message (text or URL), Message Type ID (photo or text)
+
+
+ 
